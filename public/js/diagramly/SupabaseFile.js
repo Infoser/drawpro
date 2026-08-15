@@ -564,6 +564,10 @@
 		
 		EditorUi.prototype.init = function()
 		{
+			// Debug/extension hook: the App instance is otherwise only kept
+			// in a local variable inside App.main
+			window.editor = this;
+			
 			this.supabaseUrl = urlParams['supabaseUrl'] || '';
 			this.supabaseAnonKey = urlParams['supabaseAnonKey'] || '';
 			this.appUrl = urlParams['appUrl'] || '';
