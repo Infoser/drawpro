@@ -48,6 +48,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  if (data) {
+    data.forEach((d: any) => {
+      if (d.latest_version && Array.isArray(d.latest_version)) {
+        d.latest_version.sort((a: any, b: any) => b.version - a.version)
+      }
+    })
+  }
+
   return NextResponse.json(data)
 }
 
