@@ -1,0 +1,25 @@
+{
+  "name": "drawpro",
+  "version": "1.0.0",
+  "description": "DrawPro - Free online diagram software based on draw.io",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . -l 3000"
+  },
+  "keywords": [
+    "drawpro",
+    "diagram",
+    "flowchart",
+    "draw.io",
+    "editor"
+  ],
+  "author": "DrawPro Team",
+  "license": "Apache-2.0",
+  "homepage": "https://drawpro.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Infoser/drawpro.git"
+  },
+  "dependencies": {}
+}

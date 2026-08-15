@@ -1,0 +1,20 @@
+ATTRIBUTION NOTICE
+
+This product includes software developed by JGraph Ltd (https://www.jgraph.com/) 
+and draw.io AG (https://www.draw.io/).
+
+The draw.io source code is licensed under the Apache License, Version 2.0
+(http://www.apache.org/licenses/LICENSE-2.0).
+
+Original source: https://github.com/jgraph/drawio
+
+Copyright (c) 2006-2026, JGraph Ltd / draw.io AG
+
+Modifications by DrawPro Team:
+- Rebranding from draw.io to DrawPro
+- Integration with Supabase for cloud storage and auth
+- Real-time collaboration via Supabase Realtime
+- AI flowchart generation via NVIDIA NIM
+- Custom branding and deployment configuration
+
+Licensed under the Apache License, Version 2.0.
