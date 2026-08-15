@@ -1,0 +1,11 @@
+.vercel
+.env
+.env.local
+.env.production.local
+node_modules
+*.log
+.DS_Store
+*.pem
+.vercel
+dist
+build

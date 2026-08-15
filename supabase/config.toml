@@ -1,0 +1,36 @@
+# Supabase Configuration for DrawPro
+# Run: supabase start (for local dev) or apply migrations to production project
+
+# Local development settings
+[api]
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+
+[jwt]
+expiry = 3600
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://drawpro-omega.vercel.app"]
+enable_email_signup = true
+enable_email_autoconfirm = false
+password_min_length = 8
+
+# External providers
+[auth.external.github]
+enabled = true
+client_id = "env(GITHUB_CLIENT_ID)"
+secret = "env(GITHUB_CLIENT_SECRET)"
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
