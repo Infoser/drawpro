@@ -16,7 +16,8 @@ export async function GET(
     .from('diagrams')
     .select(`
       *,
-      latest_version:diagram_versions!diagram_id(order=version.desc)(
+      latest_version:diagram_versions!diagram_id(
+        version,
         nodes,
         edges,
         viewport,
@@ -29,6 +30,10 @@ export async function GET(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 })
+  }
+
+  if (data.latest_version && Array.isArray(data.latest_version)) {
+    data.latest_version.sort((a: any, b: any) => b.version - a.version)
   }
 
   // Check access

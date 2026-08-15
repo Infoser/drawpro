@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     .from('diagrams')
     .select(`
       *,
-      latest_version:diagram_versions!diagram_id(order=version.desc)(
+      latest_version:diagram_versions!diagram_id(
+        version,
         nodes,
         edges,
         viewport,

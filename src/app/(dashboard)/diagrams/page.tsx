@@ -28,7 +28,8 @@ export default function DiagramsPage() {
       .from('diagrams')
       .select(`
         *,
-        latest_version:diagram_versions!diagram_id(order=version.desc)(
+        latest_version:diagram_versions!diagram_id(
+          version,
           nodes,
           edges,
           viewport,
@@ -52,7 +53,14 @@ export default function DiagramsPage() {
     if (error) {
       setError(error.message)
     } else {
-      setDiagrams(data || [])
+      setDiagrams(
+        (data || []).map((d) => ({
+          ...d,
+          latest_version: Array.isArray(d.latest_version)
+            ? d.latest_version.sort((a: { version: number }, b: { version: number }) => b.version - a.version)[0]
+            : d.latest_version,
+        }))
+      )
     }
     setLoading(false)
   }
