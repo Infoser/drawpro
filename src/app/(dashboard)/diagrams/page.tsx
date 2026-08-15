@@ -28,7 +28,7 @@ export default function DiagramsPage() {
       .from('diagrams')
       .select(`
         *,
-        latest_version:diagram_versions!diagram_id(
+        latest_version:diagram_versions!diagram_id(order=version.desc)(
           nodes,
           edges,
           viewport,
