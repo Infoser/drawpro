@@ -23,6 +23,12 @@
     <link rel="stylesheet" type="text/css" href="styles/grapheditor.css">
 	<link rel="stylesheet" media="(forced-colors: active)" href="styles/high-contrast.css" id="high-contrast-stylesheet">
 	<script src="js/bootstrap.js"></script>
+	<script>
+		// Supabase configuration - injected at build time via Vercel env vars
+		urlParams['supabaseUrl'] = '';
+		urlParams['supabaseAnonKey'] = '';
+		urlParams['appUrl'] = 'https://drawpro-omega.vercel.app';
+	</script>
 	<style type="text/css">
 		.geBlock {
 			z-index:-3;
@@ -53,6 +59,7 @@
 		</p>
 	</div>
 </div>
+<script src="js/diagramly/SupabaseFile.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

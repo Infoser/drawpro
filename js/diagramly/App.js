@@ -17,6 +17,11 @@ App = function(editor, container, lightbox)
 		(urlParams['lightbox'] == '1' || (uiTheme == 'min' &&
 		urlParams['chrome'] != '0')));
 	
+	// Store Supabase configuration from URL params
+	this.supabaseUrl = urlParams['supabaseUrl'] || '';
+	this.supabaseAnonKey = urlParams['supabaseAnonKey'] || '';
+	this.appUrl = urlParams['appUrl'] || '';
+	
 	// Logs changes to autosave
 	this.editor.addListener('autosaveChanged', mxUtils.bind(this, function()
 	{
