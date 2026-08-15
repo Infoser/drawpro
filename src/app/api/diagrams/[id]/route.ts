@@ -22,7 +22,7 @@ export async function GET(
         viewport,
         created_at
       ),
-      collaborators!diagram_id(user_id, role)
+      diagram_collaborators!diagram_id(user_id, role)
     `)
     .eq('id', params.id)
     .single()
@@ -34,7 +34,7 @@ export async function GET(
   // Check access
   const isOwner = data.owner_id === user.id
   const isPublic = data.is_public
-  const isCollaborator = data.collaborators?.some((c: any) => c.user_id === user.id)
+  const isCollaborator = data.diagram_collaborators?.some((c: any) => c.user_id === user.id)
 
   if (!isOwner && !isPublic && !isCollaborator) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

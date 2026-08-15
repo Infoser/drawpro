@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         viewport,
         created_at
       ),
-      collaborators!diagram_id(user_id, role)
+      diagram_collaborators!diagram_id(user_id, role)
     `)
     .order('updated_at', { ascending: false })
 
