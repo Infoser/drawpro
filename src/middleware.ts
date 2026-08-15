@@ -26,13 +26,13 @@ export async function middleware(request: NextRequest) {
   )
 
   // Auth routes (redirect if already logged in)
-  const authPaths = ['/auth/login', '/auth/signup']
+  const authPaths = ['/login', '/signup']
   const isAuthRoute = authPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   )
 
   if (isProtected && !session) {
-    const redirectUrl = new URL('/auth/login', request.url)
+    const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', request.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
   }
@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/auth/login',
-    '/auth/signup',
+    '/login',
+    '/signup',
   ],
 }
