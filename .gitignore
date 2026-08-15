@@ -9,3 +9,6 @@ node_modules
 .vercel
 dist
 build
+.env*.local
+
+.next

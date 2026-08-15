@@ -1,11 +1,13 @@
 {
   "name": "drawpro",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "DrawPro - Free online diagram software based on draw.io",
-  "main": "index.html",
+  "private": true,
   "scripts": {
-    "start": "npx serve .",
-    "dev": "npx serve . -l 3000"
+    "dev": "next dev",
+    "build": "node scripts/inject-env.mjs && next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "keywords": [
     "drawpro",
@@ -16,10 +18,22 @@
   ],
   "author": "DrawPro Team",
   "license": "Apache-2.0",
-  "homepage": "https://drawpro.vercel.app",
+  "homepage": "https://drawpro-omega.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/Infoser/drawpro.git"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.4"
+  }
 }

@@ -24,10 +24,15 @@
 	<link rel="stylesheet" media="(forced-colors: active)" href="styles/high-contrast.css" id="high-contrast-stylesheet">
 	<script src="js/bootstrap.js"></script>
 	<script>
-		// Supabase configuration - injected at build time via Vercel env vars
-		urlParams['supabaseUrl'] = '';
-		urlParams['supabaseAnonKey'] = '';
-		urlParams['appUrl'] = 'https://drawpro-omega.vercel.app';
+		// Supabase configuration - placeholders replaced at build time by scripts/inject-env.mjs
+		urlParams['supabaseUrl'] = '__NEXT_PUBLIC_SUPABASE_URL__';
+		urlParams['supabaseAnonKey'] = '__NEXT_PUBLIC_SUPABASE_ANON_KEY__';
+		urlParams['appUrl'] = window.location.origin;
+		// Diagram id passed from the dashboard (e.g. /editor.html?id=abc123)
+		urlParams['diagramId'] = urlParams['id'] || '';
+		// Disables draw.io's external realtime signaling (our own realtime
+		// collaboration comes in a later phase)
+		urlParams['sockets'] = '0';
 	</script>
 	<style type="text/css">
 		.geBlock {
@@ -59,6 +64,7 @@
 		</p>
 	</div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/diagramly/SupabaseFile.js"></script>
 <script src="js/main.js"></script>
 </body>

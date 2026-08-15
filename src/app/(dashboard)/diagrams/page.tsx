@@ -284,7 +284,7 @@ function formatDate(dateString: string) {
   return date.toLocaleDateString()
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container: {
     maxWidth: '1200px',
     margin: '0 auto',

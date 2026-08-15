@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { getBrowserClient } from '@/lib/supabase/browser'
-import { User } from '@supabase/supabase-js'
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 
 export default function DashboardLayout({
   children,
@@ -18,11 +18,11 @@ export default function DashboardLayout({
 
   useEffect(() => {
     const supabase = getBrowserClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }: { data: { user: User | null } }) => {
       setUser(user)
       setLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setUser(session?.user ?? null)
     })
     return () => subscription.unsubscribe()
@@ -163,7 +163,7 @@ function SettingsIcon({ style }: { style: React.CSSProperties }) {
   )
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   loadingContainer: {
     minHeight: '100vh',
     display: 'flex',

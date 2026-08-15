@@ -13,14 +13,16 @@
  */
 App = function(editor, container, lightbox)
 {
-	EditorUi.call(this, editor, container, (lightbox != null) ? lightbox :
-		(urlParams['lightbox'] == '1' || (uiTheme == 'min' &&
-		urlParams['chrome'] != '0')));
-	
-	// Store Supabase configuration from URL params
+	// Store Supabase configuration from URL params (must be set before
+	// EditorUi.call since init() reads these during the constructor)
 	this.supabaseUrl = urlParams['supabaseUrl'] || '';
 	this.supabaseAnonKey = urlParams['supabaseAnonKey'] || '';
 	this.appUrl = urlParams['appUrl'] || '';
+	this.currentDiagramId = urlParams['diagramId'] || null;
+
+	EditorUi.call(this, editor, container, (lightbox != null) ? lightbox :
+		(urlParams['lightbox'] == '1' || (uiTheme == 'min' &&
+		urlParams['chrome'] != '0')));
 	
 	// Logs changes to autosave
 	this.editor.addListener('autosaveChanged', mxUtils.bind(this, function()
