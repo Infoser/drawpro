@@ -109,8 +109,16 @@ export async function POST(request: NextRequest) {
   try {
     // Some models on NIM do not support response_format json_object; retry
     // without it and parse the JSON out of the plain text response instead.
+    // 429 (rate limit) gets one short backoff retry.
     nimResponse = await callNim(true)
-    if (!nimResponse.ok) {
+
+    for (let attempt = 0; attempt < 3 && !nimResponse.ok && nimResponse.status === 429; attempt++)
+    {
+      await new Promise((resolve) => setTimeout(resolve, 5000 * (attempt + 1)))
+      nimResponse = await callNim(true)
+    }
+
+    if (!nimResponse.ok && nimResponse.status !== 429) {
       nimResponse = await callNim(false)
     }
   } catch (e) {
@@ -122,9 +130,10 @@ export async function POST(request: NextRequest) {
 
   if (!nimResponse.ok) {
     const detail = await nimResponse.text().catch(() => '')
+    const status = nimResponse.status === 429 ? 429 : 502
     return NextResponse.json(
       { error: `AI service error (${nimResponse.status}): ${detail.slice(0, 300)}` },
-      { status: 502 }
+      { status }
     )
   }
 
