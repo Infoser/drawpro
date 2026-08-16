@@ -449,27 +449,32 @@
 			xhr.open(method, url, true);
 			xhr.setRequestHeader('Content-Type', 'application/json');
 			
-			// Get auth token from Supabase
+			// Get auth token from the session cookie (synchronously). The
+			// async getSession() path used to hang on the auth cross-tab
+			// lock while the wrapper's own supabase client is initializing,
+			// which left every API call in limbo (realtime never started).
 			var supabase = this.ui.supabaseClient;
 			
-			if (supabase)
+			if (supabase != null)
 			{
-				supabase.auth.getSession().then(function(response)
+				try
 				{
-					if (response.data.session)
+					var stored = supabase.auth.storage.getItem(supabase.auth.storageKey);
+					
+					if (stored != null)
 					{
-						xhr.setRequestHeader('Authorization', 'Bearer ' + response.data.session.access_token);
+						var parsed = JSON.parse(stored);
+						
+						if (parsed != null && parsed.access_token != null)
+						{
+							xhr.setRequestHeader('Authorization', 'Bearer ' + parsed.access_token);
+						}
 					}
-					sendRequest();
-				}).catch(function()
-				{
-					sendRequest();
-				});
+				}
+				catch (e) { }
 			}
-			else
-			{
-				sendRequest();
-			}
+			
+			sendRequest();
 			
 			function sendRequest()
 			{
