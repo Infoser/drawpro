@@ -636,6 +636,21 @@
 			var xml = this.toMxfileXml();
 			var doc = mxUtils.parseXml(xml);
 			this.ui.editor.setGraphXml(doc.documentElement);
+
+			// The originating peer has already persisted this state as a
+			// version; mark the file clean so the receiving side does not
+			// autosave a duplicate version on every remote change.
+			var file = this.file;
+
+			if (file != null)
+			{
+				file.setModified(false);
+
+				if (typeof file.setShadowModified === 'function')
+				{
+					file.setShadowModified(false);
+				}
+			}
 		}
 		catch (e)
 		{
