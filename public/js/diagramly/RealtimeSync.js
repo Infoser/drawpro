@@ -177,7 +177,7 @@
 		});
 
 		// Resolve this user's role via the collaborators API
-		file.callApi('/api/diagrams/' + this.diagramId + '/collaborators', 'GET', null,
+		this.file.callApi('/api/diagrams/' + this.diagramId + '/collaborators', 'GET', null,
 			function(rows)
 			{
 				that.applyRole(rows);
