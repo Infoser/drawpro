@@ -701,7 +701,13 @@
 					{
 						auth: {
 							storage: createCookieStorage(),
-							persistSession: false,
+							// persistSession MUST be true: with false, supabase-js
+							// swaps in an in-memory storage and never reads the
+							// cookie adapter, so getSession() stays null and
+							// realtime auth is impossible. Our adapter is
+							// read-only (cookies are written by the app), which
+							// is all we need for recovery.
+							persistSession: true,
 							autoRefreshToken: true
 						}
 					}
