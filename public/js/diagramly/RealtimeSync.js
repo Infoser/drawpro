@@ -192,37 +192,51 @@
 		var that = this;
 		var session = null;
 
-		this.ui.supabaseClient.auth.getSession().then(function(resp)
+		// Read the session synchronously from the cookie adapter instead of
+		// awaiting getSession(), which can hang on the auth cross-tab lock
+		// while the wrapper's own supabase client is initializing.
+		try
 		{
-			session = resp.data.session;
+			var stored = this.ui.supabaseClient.auth.storage.getItem(this.ui.supabaseClient.auth.storageKey);
 
-			if (session == null)
+			if (stored != null)
 			{
-				that.role = null;
-				that.connect(session);
-				return;
-			}
+				var parsed = JSON.parse(stored);
 
-			that.role = 'owner';
-			var email = session.user.email;
-
-			if (rows != null)
-			{
-				for (var i = 0; i < rows.length; i++)
+				if (parsed != null && parsed.access_token != null)
 				{
-					if (rows[i].email === email)
-					{
-						that.role = rows[i].role;
-						break;
-					}
+					session = parsed;
 				}
 			}
-
-			that.connect(session);
-		}).catch(function()
+		}
+		catch (e)
 		{
-			that.connect(null);
-		});
+			session = null;
+		}
+
+		if (session == null)
+		{
+			that.role = null;
+			that.connect(session);
+			return;
+		}
+
+		that.role = 'owner';
+		var email = session.user != null ? session.user.email : null;
+
+		if (rows != null)
+		{
+			for (var i = 0; i < rows.length; i++)
+			{
+				if (rows[i].email === email)
+				{
+					that.role = rows[i].role;
+					break;
+				}
+			}
+		}
+
+		that.connect(session);
 	};
 
 	RealtimeSync.prototype.connect = function(session)
