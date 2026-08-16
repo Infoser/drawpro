@@ -473,6 +473,17 @@
 			
 			function sendRequest()
 			{
+				// Guard: the auth getSession() promise can settle more than
+				// once in rare races, which used to send the same XHR twice
+				// (the second fire delivered an empty response and reset the
+				// freshly loaded diagram to an empty one).
+				if (xhr.__sent)
+				{
+					return;
+				}
+				
+				xhr.__sent = true;
+				
 				xhr.onreadystatechange = function()
 				{
 					if (xhr.readyState === 4)
@@ -695,6 +706,28 @@
 						}
 					}
 				);
+				
+				// Recover the session into memory right away. supabase-js does
+				// not read the storage adapter when persistSession is false,
+				// which left getSession() null in the iframe. The cookie
+				// adapter already converts the legacy cookie array into a v2
+				// session object, so we hand it straight to setSession.
+				var storedSession = null;
+				
+				try
+				{
+					storedSession = this.supabaseClient.auth.storage.getItem(this.supabaseClient.auth.storageKey);
+				}
+				catch (e) { }
+				
+				if (storedSession != null)
+				{
+					try
+					{
+						this.supabaseClient.auth.setSession(JSON.parse(storedSession)).catch(function() { });
+					}
+					catch (e) { }
+				}
 			}
 			
 			originalInit.apply(this, arguments);
