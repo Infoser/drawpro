@@ -185,6 +185,17 @@
 			{
 				that.applyRole(null);
 			});
+
+		// Fallback: the collaborators XHR can die during slow cold starts
+		// (connection resets). applyRole(null) reads the session from the
+		// cookie and defaults to the owner role, which is enough to connect.
+		setTimeout(function()
+		{
+			if (that.role == null)
+			{
+				that.applyRole(null);
+			}
+		}, 4000);
 	};
 
 	RealtimeSync.prototype.applyRole = function(rows)
