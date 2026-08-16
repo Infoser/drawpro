@@ -31,6 +31,110 @@
 		return 'h' + h;
 	}
 	
+	// Storage adapter that reads the session from cookies (the app stores
+	// sessions in cookies via @supabase/auth-helpers-nextjs, not localStorage).
+	// The cookie holds the legacy array format [access_token, refresh_token,
+	// provider_token, provider_refresh_token, factors], possibly chunked as
+	// <key>.0, <key>.1, ... when larger than 3180 chars. This adapter converts
+	// it into the v2 session object supabase-js expects.
+	function createCookieStorage()
+	{
+		function cookieRegex(name)
+		{
+			return new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)');
+		}
+		
+		function readAll(name)
+		{
+			var match = document.cookie.match(cookieRegex(name));
+			
+			if (match != null)
+			{
+				try { return decodeURIComponent(match[1]); }
+				catch (e) { return match[1]; }
+			}
+			
+			var parts = [];
+			var i = 0;
+			
+			for (;;)
+			{
+				var chunkMatch = document.cookie.match(cookieRegex(name + '.' + i));
+				
+				if (chunkMatch == null)
+				{
+					break;
+				}
+				
+				parts.push(chunkMatch[1]);
+				i++;
+			}
+			
+			if (parts.length > 0)
+			{
+				try { return parts.map(decodeURIComponent).join(''); }
+				catch (e) { return parts.join(''); }
+			}
+			
+			return null;
+		}
+		
+		return {
+			getItem: function(key)
+			{
+				var raw = readAll(key);
+				
+				if (raw == null)
+				{
+					return null;
+				}
+				
+				try
+				{
+					var parsed = JSON.parse(raw);
+					
+					if (Array.isArray(parsed))
+					{
+						var payload = {};
+						
+						try
+						{
+							var part = parsed[0].split('.')[1];
+							part = part.replace(/-/g, '+').replace(/_/g, '/');
+							payload = JSON.parse(atob(part));
+						}
+						catch (e) { }
+						
+						var user = {
+							id: payload.sub,
+							email: payload.email,
+							aud: payload.aud,
+							role: payload.role,
+							app_metadata: payload.app_metadata || {},
+							user_metadata: payload.user_metadata || {}
+						};
+						
+						return JSON.stringify({
+							access_token: parsed[0],
+							refresh_token: parsed[1],
+							provider_token: parsed[2],
+							provider_refresh_token: parsed[3],
+							token_type: 'bearer',
+							expires_in: payload.exp != null ? payload.exp - Math.round(Date.now() / 1000) : 3600,
+							expires_at: payload.exp != null ? payload.exp : Math.round(Date.now() / 1000) + 3600,
+							user: user
+						});
+					}
+				}
+				catch (e) { }
+				
+				return raw;
+			},
+			setItem: function() { },
+			removeItem: function() { }
+		};
+	}
+	
 	function setup()
 	{
 		if (patched)
@@ -573,12 +677,19 @@
 			this.appUrl = urlParams['appUrl'] || '';
 			this.currentDiagramId = urlParams['diagramId'] || urlParams['id'] || null;
 			
-			// Initialize Supabase client
+			// Initialize Supabase client (session lives in cookies)
 			if (typeof supabase !== 'undefined')
 			{
 				this.supabaseClient = supabase.createClient(
 					this.supabaseUrl || '',
-					this.supabaseAnonKey || ''
+					this.supabaseAnonKey || '',
+					{
+						auth: {
+							storage: createCookieStorage(),
+							persistSession: false,
+							autoRefreshToken: true
+						}
+					}
 				);
 			}
 			
