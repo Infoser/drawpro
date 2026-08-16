@@ -6,6 +6,9 @@
  * Supabase Realtime private channel:
  *
  *   - Broadcast 'y-update': incremental Yjs updates (base64) from local edits
+ *   - Broadcast 'y-viewport': small {tx, ty, scale} payloads for viewport
+ *     changes only - viewport movement must never trigger a full-state
+ *     broadcast, or every zoom tick would rebuild the graph on every peer
  *   - Broadcast 'y-sync-request' / 'y-sync-state': full-state handshake for
  *     late joiners (seeds from the latest saved version, then pulls the
  *     full Yjs state from online peers to close the gap)
@@ -81,6 +84,9 @@
 		this.localCursor = null;
 		this.presenceTimer = null;
 		this.pendingSync = false;
+		this.viewportTimer = null;      // viewport broadcast throttle
+		this.lastSentViewport = null;   // last broadcast viewport values
+		this.lastAppliedViewport = null; // last viewport applied locally
 		this.cells = this.doc.getMap('cells');
 		this.viewport = this.doc.getMap('viewport');
 		this.cellCache = {};       // cellId -> serialized cell signature
@@ -299,6 +305,11 @@
 		this.channel.on('broadcast', {event: 'y-update'}, function(msg)
 		{
 			that.onRemoteUpdate(msg);
+		});
+
+		this.channel.on('broadcast', {event: 'y-viewport'}, function(msg)
+		{
+			that.onRemoteViewport(msg);
 		});
 
 		this.channel.on('broadcast', {event: 'y-sync-request'}, function()
@@ -537,10 +548,49 @@
 
 	RealtimeSync.prototype.syncViewport = function()
 	{
-		this.doc.transact(function()
+		if (this.viewportTimer != null)
 		{
-			this.syncViewportInto();
-		}.bind(this), 'local');
+			return;
+		}
+
+		var that = this;
+
+		this.viewportTimer = setTimeout(function()
+		{
+			that.viewportTimer = null;
+			that.flushViewport();
+		}, 120);
+	};
+
+	// Broadcasts only the viewport values on their own event. Zooming and
+	// panning fire continuously, and routing them through the Y doc would
+	// piggyback them into every full-state 'y-update' broadcast, forcing a
+	// full graph rebuild on every peer for a change that carries no cells.
+	RealtimeSync.prototype.flushViewport = function()
+	{
+		if (this.channel == null || !this.joined)
+		{
+			return;
+		}
+
+		var view = this.graph.view;
+		var v = {tx: view.translate.x, ty: view.translate.y, scale: view.scale};
+
+		if (this.lastSentViewport != null &&
+			this.lastSentViewport.tx === v.tx &&
+			this.lastSentViewport.ty === v.ty &&
+			this.lastSentViewport.scale === v.scale)
+		{
+			return;
+		}
+
+		this.lastSentViewport = v;
+
+		this.channel.send({
+			type: 'broadcast',
+			event: 'y-viewport',
+			payload: v
+		});
 	};
 
 	// Builds mxfile XML from the Y cells map (mirror of SupabaseFile.convertToMxGraph)
@@ -674,17 +724,61 @@
 	{
 		try
 		{
-			this.syncing = true;
 			var tx = this.viewport.get('tx');
 			var ty = this.viewport.get('ty');
 			var scale = this.viewport.get('scale');
 
-			if (tx != null && ty != null && scale != null)
+			if (tx != null && ty != null && scale != null &&
+				(this.lastAppliedViewport == null ||
+				this.lastAppliedViewport.tx !== tx ||
+				this.lastAppliedViewport.ty !== ty ||
+				this.lastAppliedViewport.scale !== scale))
 			{
+				this.syncing = true;
+				this.lastAppliedViewport = {tx: tx, ty: ty, scale: scale};
 				this.graph.view.setScale(scale);
 				this.graph.view.setTranslate(tx, ty);
 			}
 		}
+		catch (e) { }
+		finally
+		{
+			this.syncing = false;
+		}
+	};
+
+	// Applies a viewport-only broadcast from a peer. Values that already
+	// match are skipped so an identical message cannot trigger redundant
+	// viewStateChanged refreshes on the receiving side.
+	RealtimeSync.prototype.onRemoteViewport = function(msg)
+	{
+		if (msg == null || msg.payload == null ||
+			msg.payload.tx == null || msg.payload.ty == null ||
+			msg.payload.scale == null)
+		{
+			return;
+		}
+
+		if (this.lastAppliedViewport != null &&
+			this.lastAppliedViewport.tx === msg.payload.tx &&
+			this.lastAppliedViewport.ty === msg.payload.ty &&
+			this.lastAppliedViewport.scale === msg.payload.scale)
+		{
+			return;
+		}
+
+		try
+		{
+			this.syncing = true;
+			this.lastAppliedViewport = {
+				tx: msg.payload.tx,
+				ty: msg.payload.ty,
+				scale: msg.payload.scale
+			};
+			this.graph.view.setScale(msg.payload.scale);
+			this.graph.view.setTranslate(msg.payload.tx, msg.payload.ty);
+		}
+		catch (e) { }
 		finally
 		{
 			this.syncing = false;

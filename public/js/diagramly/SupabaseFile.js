@@ -716,6 +716,21 @@
 			}
 		};
 		
+		// Reroute same-app URLs (File > New, "open in new window", save-as
+		// "_blank") into the dashboard wrapper so popup windows keep the
+		// dashboard chrome (sidebar, comments, presence) instead of opening
+		// a bare editor.html. A diagram id is only present on the editor
+		// page itself, so unrelated flows keep draw.io's original URL.
+		var editorGetUrl = EditorUi.prototype.getUrl;
+
+		EditorUi.prototype.getUrl = function(pathname)
+		{
+			var res = editorGetUrl.apply(this, arguments);
+			var id = urlParams['diagramId'] || urlParams['id'] || null;
+
+			return (id != null && id !== '') ? '/dashboard/editor/' + id : res;
+		};
+
 		// Patch EditorUi.init to inject Supabase config and to open an
 		// existing diagram when one was requested via ?id=xxx. This runs
 		// inside EditorUi.call (the App constructor), so the values are
