@@ -749,19 +749,27 @@
 				var that = this;
 				var file = new SupabaseFile(this, '', 'Untitled Diagram', this.currentDiagramId);
 				
-				file.getFileContent(mxUtils.bind(this, function(xml)
+				// Retries the initial load: cold starts on flaky networks can
+				// drop the versions request, which would otherwise leave the
+				// user staring at the app's empty default file.
+				var loadAttempts = 0;
+				var loadFile = mxUtils.bind(this, function()
 				{
-					// Guard: the load callback can fire more than once (e.g. a
-					// second XHR ready-state event with an empty response). The
-					// first response is always the valid one.
-					if (that._diagramLoaded)
+					loadAttempts++;
+					
+					file.getFileContent(mxUtils.bind(this, function(xml)
 					{
-						return;
-					}
-					
-					that._diagramLoaded = true;
-					
-					file.setData(xml);
+						// Guard: the load callback can fire more than once (e.g. a
+						// second XHR ready-state event with an empty response). The
+						// first response is always the valid one.
+						if (that._diagramLoaded)
+						{
+							return;
+						}
+						
+						that._diagramLoaded = true;
+						
+						file.setData(xml);
 					
 					// Loads the diagram title (best effort)
 					file.callApi('/api/diagrams/' + that.currentDiagramId, 'GET', null,
@@ -785,12 +793,21 @@
 				{
 					console.warn('Failed to load diagram ' + that.currentDiagramId + ':', err);
 					
+					// Retry a couple of times before giving up (flaky cold
+					// starts drop the versions request)
+					if (loadAttempts < 3)
+					{
+						window.setTimeout(loadFile, 1000);
+					}
 					// Shows the default splash screen
-					if (urlParams['splash'] != '0')
+					else if (urlParams['splash'] != '0')
 					{
 						that.showSplash();
 					}
 				}));
+				});
+				
+				loadFile();
 			}
 		};
 		
