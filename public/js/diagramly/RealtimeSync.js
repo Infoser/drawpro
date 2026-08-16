@@ -69,6 +69,7 @@
 		this.channel = null;
 		this.joined = false;
 		this.role = null;
+		this.instanceId = 'i' + Math.random().toString(36).slice(2);
 		this.presence = {};        // clientId -> {email, name, color, cursor}
 		this.cursorEls = {};       // clientId -> cursor overlay div
 		this.avatarEl = null;      // in-editor avatar chip container
@@ -118,7 +119,9 @@
 		// Apply remote Yjs state to the graph
 		this.doc.on('update', function(update, origin)
 		{
-			if (origin === 'local')
+			// Only broadcast our own local edits; remote updates must not be
+			// re-broadcast (echo loop) and seeding must stay silent
+			if (origin !== 'local' || that.seeding)
 			{
 				return;
 			}
@@ -667,6 +670,7 @@
 	RealtimeSync.prototype.updatePresence = function()
 	{
 		var state = {
+			instanceId: this.instanceId,
 			user: {
 				id: this.userId,
 				email: this.userEmail,
@@ -712,7 +716,7 @@
 				{
 					var meta = metas[i];
 
-					if (meta.user != null && meta.user.id !== this.userId)
+					if (meta.instanceId != null && meta.instanceId !== this.instanceId)
 					{
 						peers.push({
 							clientId: clientId,

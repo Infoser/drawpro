@@ -41,9 +41,9 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     <div style={styles.container}>
       {peers.length > 0 && (
         <div style={styles.avatars}>
-          {peers.map((peer) => (
+          {peers.map((peer, i) => (
             <div
-              key={peer.email}
+              key={`${peer.email}-${i}`}
               style={{ ...styles.avatar, background: peer.color }}
               title={`${peer.email} (viewing)`}
             >
