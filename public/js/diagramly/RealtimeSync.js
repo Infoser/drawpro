@@ -126,6 +126,10 @@
 				return;
 			}
 
+			// Incremental Yjs deltas carry delete-sets whose positions can
+			// race against a peer's structure and destroy keys. Full-state
+			// broadcasts are idempotent and self-healing, and the diagrams
+			// are small enough (a few KB) that this is cheap.
 			that.updateBuf.push(update);
 
 			if (that.flushTimer == null)
@@ -664,38 +668,17 @@
 		}
 	};
 
-	// Flushes accumulated incremental updates to the channel
+	// Flushes the full Yjs state to the channel. Full-state broadcasts are
+	// idempotent and self-healing, unlike incremental deltas whose
+	// delete-sets can race against a peer's item structure.
 	RealtimeSync.prototype.flushUpdates = function()
 	{
-		if (this.updateBuf.length === 0)
-		{
-			return;
-		}
-
-		var total = 0;
-
-		for (var i = 0; i < this.updateBuf.length; i++)
-		{
-			total += this.updateBuf[i].length;
-		}
-
-		var merged = new Uint8Array(total);
-		var offset = 0;
-
-		for (var j = 0; j < this.updateBuf.length; j++)
-		{
-			merged.set(this.updateBuf[j], offset);
-			offset += this.updateBuf[j].length;
-		}
-
-		this.updateBuf = [];
-
 		if (this.joined)
 		{
 			this.channel.send({
 				type: 'broadcast',
 				event: 'y-update',
-				payload: {b: bytesToBase64(merged)}
+				payload: {b: bytesToBase64(Y.encodeStateAsUpdate(this.doc))}
 			});
 		}
 	};
