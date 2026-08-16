@@ -749,6 +749,14 @@
 
 	RealtimeSync.prototype.updatePresence = function()
 	{
+		// The cursor handler can fire before the channel exists or the join
+		// completes (e.g. a brand-new drawing window); track() would throw
+		// "Cannot read properties of null (reading 'track')".
+		if (this.channel == null || !this.joined)
+		{
+			return;
+		}
+
 		var state = {
 			instanceId: this.instanceId,
 			user: {
