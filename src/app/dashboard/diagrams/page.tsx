@@ -5,6 +5,7 @@ import { getBrowserClient } from '@/lib/supabase/browser'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Diagram, DiagramWithLatestVersion } from '@/types/database'
+import ShareModal from '@/components/ShareModal'
 
 export default function DiagramsPage() {
   const router = useRouter()
@@ -14,6 +15,12 @@ export default function DiagramsPage() {
   const [filter, setFilter] = useState<'all' | 'owned' | 'shared' | 'public'>('all')
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [shareDiagram, setShareDiagram] = useState<DiagramWithLatestVersion | null>(null)
+
+  useEffect(() => {
+    getBrowserClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id || null))
+  }, [])
 
   useEffect(() => {
     fetchDiagrams()
@@ -42,8 +49,15 @@ export default function DiagramsPage() {
     if (filter === 'owned') {
       query = query.eq('owner_id', (await supabase.auth.getUser()).data.user?.id)
     } else if (filter === 'shared') {
-      query = query.eq('is_public', false)
-      // This would need a more complex query for shared diagrams
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: collabs } = await supabase
+        .from('diagram_collaborators')
+        .select('diagram_id')
+        .eq('user_id', user?.id || '')
+      const ids = (collabs || []).map((c) => c.diagram_id)
+      query = query
+        .eq('is_public', false)
+        .in('id', ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000'])
     } else if (filter === 'public') {
       query = query.eq('is_public', true)
     }
@@ -186,9 +200,19 @@ export default function DiagramsPage() {
               diagram={diagram}
               onRename={handleRename}
               onDelete={handleDelete}
+              onShare={(d) => setShareDiagram(d)}
             />
           ))}
         </div>
+      )}
+
+      {shareDiagram && (
+        <ShareModal
+          diagramId={shareDiagram.id}
+          diagramTitle={shareDiagram.title}
+          isOwner={shareDiagram.owner_id === currentUserId}
+          onClose={() => setShareDiagram(null)}
+        />
       )}
     </div>
   )
@@ -198,10 +222,12 @@ function DiagramCard({
   diagram,
   onRename,
   onDelete,
+  onShare,
 }: {
   diagram: DiagramWithLatestVersion
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
+  onShare: (diagram: DiagramWithLatestVersion) => void
 }) {
   const [renaming, setRenaming] = useState(false)
   const [newTitle, setNewTitle] = useState(diagram.title)
@@ -267,6 +293,12 @@ function DiagramCard({
             style={styles.actionButton}
           >
             Rename
+          </button>
+          <button
+            onClick={() => onShare(diagram)}
+            style={styles.actionButton}
+          >
+            Share
           </button>
           <button
             onClick={() => onDelete(diagram.id)}
