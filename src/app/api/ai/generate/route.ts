@@ -87,9 +87,8 @@ export async function POST(request: NextRequest) {
     { role: 'user', content: prompt },
   ]
 
-  let nimResponse: Response
-  try {
-    nimResponse = await fetch(`${NIM_BASE_URL}/chat/completions`, {
+  async function callNim(useJsonMode: boolean): Promise<Response> {
+    return fetch(`${NIM_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,10 +99,20 @@ export async function POST(request: NextRequest) {
         messages,
         temperature: 0.2,
         max_tokens: 3000,
-        response_format: { type: 'json_object' },
+        ...(useJsonMode ? { response_format: { type: 'json_object' } } : {}),
       }),
       signal: AbortSignal.timeout(60000),
     })
+  }
+
+  let nimResponse: Response
+  try {
+    // Some models on NIM do not support response_format json_object; retry
+    // without it and parse the JSON out of the plain text response instead.
+    nimResponse = await callNim(true)
+    if (!nimResponse.ok) {
+      nimResponse = await callNim(false)
+    }
   } catch (e) {
     return NextResponse.json(
       { error: `Failed to reach the AI service: ${e instanceof Error ? e.message : 'network error'}` },
@@ -135,7 +144,28 @@ export async function POST(request: NextRequest) {
   try {
     parsed = JSON.parse(rawContent)
   } catch {
-    return NextResponse.json({ error: 'AI returned malformed JSON' }, { status: 502 })
+    // Models without JSON mode may wrap the object in markdown fences
+    const fenced = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (fenced) {
+      try {
+        parsed = JSON.parse(fenced[1])
+      } catch {
+        return NextResponse.json({ error: 'AI returned malformed JSON' }, { status: 502 })
+      }
+    } else {
+      // Last resort: pull out the first balanced {...} block from the text
+      const start = rawContent.indexOf('{')
+      const end = rawContent.lastIndexOf('}')
+      if (start >= 0 && end > start) {
+        try {
+          parsed = JSON.parse(rawContent.slice(start, end + 1))
+        } catch {
+          return NextResponse.json({ error: 'AI returned malformed JSON' }, { status: 502 })
+        }
+      } else {
+        return NextResponse.json({ error: 'AI returned malformed JSON' }, { status: 502 })
+      }
+    }
   }
 
   if (!Array.isArray(parsed.nodes)) {
