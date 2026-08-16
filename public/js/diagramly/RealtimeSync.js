@@ -633,16 +633,24 @@
 			}
 
 			this.syncing = true;
+
+			// Whether the file already had unsaved local changes before this
+			// remote apply. Those must keep their autosave; only a clean file
+			// may have its modified flag reset, otherwise a remote apply that
+			// lands inside the sender's autosave debounce window would
+			// silently drop the sender's save.
+			var file = this.file;
+			var wasModified = file != null && typeof file.isModified === 'function' && file.isModified();
+
 			var xml = this.toMxfileXml();
 			var doc = mxUtils.parseXml(xml);
 			this.ui.editor.setGraphXml(doc.documentElement);
 
 			// The originating peer has already persisted this state as a
-			// version; mark the file clean so the receiving side does not
-			// autosave a duplicate version on every remote change.
-			var file = this.file;
-
-			if (file != null)
+			// version; when the file was clean, mark it clean again so the
+			// receiving side does not autosave a duplicate version on every
+			// remote change.
+			if (file != null && !wasModified)
 			{
 				file.setModified(false);
 
