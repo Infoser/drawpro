@@ -269,9 +269,10 @@ function DiagramCard({
 
       <div style={styles.preview}>
         {diagram.latest_version?.nodes && Array.isArray(diagram.latest_version.nodes) && diagram.latest_version.nodes.length > 0 ? (
-          <div style={styles.nodeCount}>
-            {diagram.latest_version.nodes.length} nodes
-          </div>
+          <Thumbnail
+            nodes={diagram.latest_version.nodes as any[]}
+            edges={(diagram.latest_version.edges as any[]) || []}
+          />
         ) : (
           <div style={styles.emptyPreview}>Empty diagram</div>
         )}
@@ -309,6 +310,103 @@ function DiagramCard({
         </div>
       </div>
     </div>
+  )
+}
+
+function Thumbnail({ nodes, edges }: { nodes: any[]; edges: any[] }) {
+  const W = 300
+  const H = 120
+  const PAD = 14
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+
+  for (const n of nodes) {
+    const x = n.position?.x || 0
+    const y = n.position?.y || 0
+    const w = n.size?.width || 120
+    const h = n.size?.height || 60
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x + w)
+    maxY = Math.max(maxY, y + h)
+  }
+
+  if (minX === Infinity) {
+    return <div style={{ color: '#ccc', fontSize: '14px' }}>Empty diagram</div>
+  }
+
+  const scale = Math.min((W - 2 * PAD) / (maxX - minX || 1), (H - 2 * PAD) / (maxY - minY || 1), 2.5)
+  const ox = PAD - minX * scale
+  const oy = PAD - minY * scale
+
+  const nodeById = new Map(nodes.map((n) => [n.id, n]))
+  const fill = (style: string) => {
+    const m = /fillColor=#([0-9a-fA-F]{6})/.exec(style || '')
+    return m ? `#${m[1]}` : '#1f77b4'
+  }
+
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ background: '#fafafa' }}>
+      {edges.map((e, i) => {
+        const s = nodeById.get(e.source)
+        const t = nodeById.get(e.target)
+        if (!s || !t) return null
+        const sx = ox + ((s.position?.x || 0) + (s.size?.width || 120) / 2) * scale
+        const sy = oy + ((s.position?.y || 0) + (s.size?.height || 60) / 2) * scale
+        const tx = ox + ((t.position?.x || 0) + (t.size?.width || 120) / 2) * scale
+        const ty = oy + ((t.position?.y || 0) + (t.size?.height || 60) / 2) * scale
+        return (
+          <line
+            key={i}
+            x1={sx}
+            y1={sy}
+            x2={tx}
+            y2={ty}
+            stroke="#94a3b8"
+            strokeWidth={1}
+          />
+        )
+      })}
+      {nodes.map((n) => {
+        const x = ox + (n.position?.x || 0) * scale
+        const y = oy + (n.position?.y || 0) * scale
+        const w = Math.max((n.size?.width || 120) * scale, 6)
+        const h = Math.max((n.size?.height || 60) * scale, 6)
+        const label = (n.label || '').toString()
+        const fontSize = Math.min(Math.max(h * 0.3, 5), 13)
+        const visible = w > 24 && h > 14
+        return (
+          <g key={n.id}>
+            <rect
+              x={x}
+              y={y}
+              width={w}
+              height={h}
+              rx={Math.min(4, w / 5)}
+              fill={fill(n.style)}
+              stroke="#475569"
+              strokeWidth={0.75}
+            />
+            {visible && (
+              <text
+                x={x + w / 2}
+                y={y + h / 2}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#ffffff"
+                fontSize={fontSize}
+                fontFamily="system-ui, sans-serif"
+              >
+                {label.length > 24 ? label.slice(0, 23) + '…' : label}
+              </text>
+            )}
+          </g>
+        )
+      })}
+    </svg>
   )
 }
 
