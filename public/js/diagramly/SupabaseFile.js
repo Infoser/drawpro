@@ -32,16 +32,34 @@
 	}
 	
 	// Storage adapter that reads the session from cookies (the app stores
-	// sessions in cookies via @supabase/auth-helpers-nextjs, not localStorage).
-	// The cookie holds the legacy array format [access_token, refresh_token,
-	// provider_token, provider_refresh_token, factors], possibly chunked as
-	// <key>.0, <key>.1, ... when larger than 3180 chars. This adapter converts
-	// it into the v2 session object supabase-js expects.
+	// sessions in cookies via @supabase/ssr, not localStorage).
+	// Two cookie formats are supported:
+	//  - legacy @supabase/auth-helpers-nextjs: raw JSON array
+	//    [access_token, refresh_token, ...], possibly chunked as
+	//    <key>.0, <key>.1, ... when larger than 3180 chars.
+	//  - @supabase/ssr: "base64-" + base64url(JSON session object), also
+	//    chunked the same way.
+	// Both are converted into the v2 session object supabase-js expects.
 	function createCookieStorage()
 	{
 		function cookieRegex(name)
 		{
 			return new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)');
+		}
+		
+		function base64UrlDecode(str)
+		{
+			var b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+			
+			while (b64.length % 4 !== 0)
+			{
+				b64 += '=';
+			}
+			
+			return decodeURIComponent(atob(b64).split('').map(function(c)
+			{
+				return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+			}).join(''));
 		}
 		
 		function readAll(name)
@@ -87,6 +105,25 @@
 				if (raw == null)
 				{
 					return null;
+				}
+				
+				// @supabase/ssr format: "base64-" + base64url(JSON). Decode it
+				// to the plain JSON string so the v2 session parse below
+				// (and supabase-js's own storage reads) works unchanged.
+				if (raw.indexOf('base64-') === 0)
+				{
+					try
+					{
+						var decoded = base64UrlDecode(raw.substring(7));
+						
+						if (JSON.parse(decoded) != null)
+						{
+							return decoded;
+						}
+					}
+					catch (e) { }
+					
+					return raw;
 				}
 				
 				try
