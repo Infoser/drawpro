@@ -187,7 +187,11 @@
 		
 		SupabaseFile.prototype.isSyncSupported = function()
 		{
-			return true;
+			// Realtime sync is handled by RealtimeSync (Yjs over Supabase
+			// Realtime), so draw.io's own DrawioFileSync polling is disabled.
+			// It used to trigger a second getFileContent whose empty response
+			// overwrote the freshly loaded diagram with an empty one.
+			return false;
 		};
 		
 		SupabaseFile.prototype.getPollingInterval = function()
@@ -703,6 +707,16 @@
 				
 				file.getFileContent(mxUtils.bind(this, function(xml)
 				{
+					// Guard: the load callback can fire more than once (e.g. a
+					// second XHR ready-state event with an empty response). The
+					// first response is always the valid one.
+					if (that._diagramLoaded)
+					{
+						return;
+					}
+					
+					that._diagramLoaded = true;
+					
 					file.setData(xml);
 					
 					// Loads the diagram title (best effort)
