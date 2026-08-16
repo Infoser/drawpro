@@ -161,7 +161,7 @@
 			this.title = title || 'Untitled Diagram';
 			this.diagramId = diagramId;
 			this.etag = this.getEtag(data);
-			this.autosaveDelay = 1000;
+			this.autosaveDelay = 3000;
 			this.maxAutosaveDelay = 30000;
 			this.maxRetries = 5;
 			this.type = 'F';
