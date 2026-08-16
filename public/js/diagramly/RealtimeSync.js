@@ -275,6 +275,20 @@
 		this.channel = this.ui.supabaseClient.channel('diagram:' + this.diagramId,
 			{config: {private: true}});
 
+		// realtime-js fetches the access token for private channels through
+		// auth.getSession(), which can stall on the cross-tab lock while the
+		// wrapper's supabase client is initializing (the channel then hangs
+		// in 'joining' with no traffic). Hand it the token directly.
+		try
+		{
+			if (this.ui.supabaseClient.realtime != null &&
+				typeof this.ui.supabaseClient.realtime.setAuth === 'function')
+			{
+				this.ui.supabaseClient.realtime.setAuth(session.access_token);
+			}
+		}
+		catch (e) { }
+
 		this.channel.on('broadcast', {event: 'y-update'}, function(msg)
 		{
 			that.onRemoteUpdate(msg);
@@ -323,6 +337,26 @@
 				console.warn('[RealtimeSync] channel status: ' + status);
 			}
 		});
+
+		// Retry the join once if it stalls (slow token fetch or a flaky
+		// WebSocket during cold starts).
+		setTimeout(function()
+		{
+			if (!that.joined)
+			{
+				that.channel.subscribe(function(status)
+				{
+					if (status === 'SUBSCRIBED')
+					{
+						that.joined = true;
+						that.seed();
+						that.updatePresence();
+						that.sendRequest();
+						console.log('[RealtimeSync] joined channel diagram:' + that.diagramId + ' (retry)');
+					}
+				});
+			}
+		}, 8000);
 	};
 
 	// Seeds the Y doc from the diagram XML that was loaded from the API.
