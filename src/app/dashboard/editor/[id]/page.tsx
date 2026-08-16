@@ -156,7 +156,7 @@ export default function EditorPage({ params }: { params: { id: string } }) {
       )}
       <button
         onClick={() => setCommentsOpen((v) => !v)}
-        style={{ ...styles.commentsToggle, background: commentsOpen ? '#1f77b4' : '#ffffff' }}
+        style={{ ...styles.commentsToggle, right: commentsOpen ? '336px' : '66px', background: commentsOpen ? '#1f77b4' : '#ffffff' }}
         title="Comments"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill={commentsOpen ? '#ffffff' : '#1f77b4'}>
@@ -301,8 +301,8 @@ const styles: Record<string, React.CSSProperties> = {
   commentsToggle: {
     position: 'fixed',
     top: '12px',
-    right: '66px',
-    zIndex: 100,
+    zIndex: 300,
+    transition: 'right 0.15s ease',
     width: '34px',
     height: '34px',
     borderRadius: '8px',
