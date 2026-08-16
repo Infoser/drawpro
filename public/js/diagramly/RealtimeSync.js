@@ -760,8 +760,14 @@
 
 	RealtimeSync.prototype.getPeers = function()
 	{
-		var state = this.channel.presenceState();
 		var peers = [];
+
+		if (this.channel == null)
+		{
+			return peers;
+		}
+
+		var state = this.channel.presenceState();
 
 		for (var clientId in state)
 		{
