@@ -141,14 +141,17 @@
 		// Remote changes to cells or viewport -> rebuild the graph
 		this.cells.observe(function()
 		{
-			if (!that.syncing)
+			// While seeding, the map is only partially populated and
+			// applying it would wipe the graph; the loaded file already
+			// matches the seed, so skip applies until seeding completes.
+			if (!that.syncing && !that.seeding)
 			{
 				that.applyRemote();
 			}
 		});
 		this.viewport.observe(function()
 		{
-			if (!that.syncing)
+			if (!that.syncing && !that.seeding)
 			{
 				that.applyRemoteViewport();
 			}
@@ -391,6 +394,14 @@
 		}
 
 		this.seeding = false;
+
+		// Apply the (now complete) map once so any remote updates that
+		// merged in while seeding are reflected in the graph.
+		if (this.joined)
+		{
+			this.applyRemote();
+			this.applyRemoteViewport();
+		}
 	};
 
 	RealtimeSync.prototype.serializeCell = function(cell)
@@ -539,12 +550,6 @@
 		this.cells.forEach(function(sig)
 		{
 			var cell = JSON.parse(sig);
-
-			if (cell.a.parent !== '0')
-			{
-				return;
-			}
-
 			xml += '        <mxCell';
 
 			for (var attr in cell.a)
