@@ -606,6 +606,12 @@
 						}, function() { });
 					
 					that.fileLoaded(file);
+					
+					// Starts Yjs realtime collaboration for this diagram
+					if (typeof that.startRealtime === 'function')
+					{
+						that.startRealtime(file);
+					}
 				}), mxUtils.bind(this, function(err)
 				{
 					console.warn('Failed to load diagram ' + that.currentDiagramId + ':', err);

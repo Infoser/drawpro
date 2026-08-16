@@ -5,6 +5,7 @@ import { getBrowserClient } from '@/lib/supabase/browser'
 
 export default function EditorPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true)
+  const [peers, setPeers] = useState<{ name: string; email: string; color: string }[]>([])
 
   useEffect(() => {
     const supabase = getBrowserClient()
@@ -17,6 +18,17 @@ export default function EditorPage({ params }: { params: { id: string } }) {
     })
   }, [])
 
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data
+      if (data && data.source === 'drawpro-editor' && data.type === 'presence') {
+        setPeers(data.users || [])
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
   if (loading) {
     return (
       <div style={styles.loading}>
@@ -27,6 +39,19 @@ export default function EditorPage({ params }: { params: { id: string } }) {
 
   return (
     <div style={styles.container}>
+      {peers.length > 0 && (
+        <div style={styles.avatars}>
+          {peers.map((peer) => (
+            <div
+              key={peer.email}
+              style={{ ...styles.avatar, background: peer.color }}
+              title={`${peer.email} (viewing)`}
+            >
+              {peer.name.substring(0, 1).toUpperCase()}
+            </div>
+          ))}
+        </div>
+      )}
       <iframe
         src={`/editor.html?id=${params.id}`}
         style={styles.iframe}
@@ -64,5 +89,26 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     height: '100%',
     border: 'none',
+  },
+  avatars: {
+    position: 'fixed',
+    top: '12px',
+    right: '16px',
+    zIndex: 100,
+    display: 'flex',
+    gap: '6px',
+  },
+  avatar: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+    cursor: 'default',
   },
 }
