@@ -618,6 +618,16 @@
 	{
 		try
 		{
+			// A map that only contains the model-root/layer cells means the
+			// peer's doc state is effectively empty (e.g. a delta whose
+			// delete-set raced ahead of its re-sets, or a peer still
+			// seeding). Applying it would wipe the graph, so keep the
+			// current content until a populated state arrives.
+			if (this.cells.size <= 2)
+			{
+				return;
+			}
+
 			this.syncing = true;
 			var xml = this.toMxfileXml();
 			var doc = mxUtils.parseXml(xml);
