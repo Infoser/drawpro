@@ -692,6 +692,15 @@
 			// in a local variable inside App.main
 			window.editor = this;
 			
+			// The hash (#Sc0c3...) belongs to draw.io's own file loading and
+			// would trigger a deprecated-#S alert plus a spurious default
+			// file at startup. This app loads via ?id=, so drop the hash
+			// before App.main's loadFile logic runs.
+			if (window.location.hash != null && window.location.hash.length > 0)
+			{
+				window.history.replaceState(null, '', window.location.pathname + window.location.search);
+			}
+			
 			this.supabaseUrl = urlParams['supabaseUrl'] || '';
 			this.supabaseAnonKey = urlParams['supabaseAnonKey'] || '';
 			this.appUrl = urlParams['appUrl'] || '';
@@ -757,17 +766,42 @@
 				{
 					loadAttempts++;
 					
-					file.getFileContent(mxUtils.bind(this, function(xml)
+file.getFileContent(mxUtils.bind(this, function(xml)
+				{
+					// Guard: the load callback can fire more than once (e.g. a
+					// second XHR ready-state event with an empty response).
+					// The empty result (a blank diagram, ~85 chars) is only
+					// applied if no real response arrives shortly after, so
+					// a racing empty response can never wipe a real diagram.
+					if (that._diagramLoaded)
 					{
-						// Guard: the load callback can fire more than once (e.g. a
-						// second XHR ready-state event with an empty response). The
-						// first response is always the valid one.
-						if (that._diagramLoaded)
+						return;
+					}
+					
+					if (xml == null || xml.length < 100)
+					{
+						if (that._emptyLoadTimer == null)
 						{
-							return;
+							that._emptyLoadTimer = window.setTimeout(mxUtils.bind(this, function()
+							{
+								if (!that._diagramLoaded)
+								{
+									that._diagramLoaded = true;
+									file.setData(xml);
+									that.fileLoaded(file);
+									
+									if (typeof that.startRealtime === 'function')
+									{
+										that.startRealtime(file);
+									}
+								}
+							}), 2500);
 						}
 						
-						that._diagramLoaded = true;
+						return;
+					}
+					
+					that._diagramLoaded = true;
 						
 						file.setData(xml);
 					
