@@ -752,6 +752,173 @@
 			
 			originalInit.apply(this, arguments);
 			
+			// AI diagram generation via NVIDIA NIM. Registers the action,
+			// dialog and Extras-menu entry; the API call is same-origin so
+			// the session cookie authenticates it automatically.
+			if (typeof mxResources !== 'undefined')
+			{
+				mxResources.parse('aiGenerate=Generate Diagram with AI...');
+			}
+			
+			var that = this;
+			
+			this.actions.addAction('aiGenerate', mxUtils.bind(this, function()
+			{
+				if (this.currentDiagramId == null)
+				{
+					this.handleError(new Error(mxResources.get('noDiagram')));
+					return;
+				}
+				
+				var div = document.createElement('div');
+				div.className = 'geDialog';
+				
+				var desc = document.createElement('p');
+				desc.style.fontSize = '12px';
+				mxUtils.write(desc, 'Describe the diagram you want to generate.');
+				div.appendChild(desc);
+				
+				var textarea = document.createElement('textarea');
+				textarea.style.width = '100%';
+				textarea.style.height = '90px';
+				textarea.style.boxSizing = 'border-box';
+				textarea.style.fontFamily = 'inherit';
+				textarea.style.fontSize = '12px';
+				textarea.style.resize = 'none';
+				textarea.placeholder = 'e.g. Customer support flow: ticket created, triaged, resolved...';
+				div.appendChild(textarea);
+				
+				var status = document.createElement('div');
+				status.style.color = '#c62828';
+				status.style.fontSize = '11px';
+				status.style.marginTop = '8px';
+				status.style.minHeight = '14px';
+				status.style.wordBreak = 'break-word';
+				div.appendChild(status);
+				
+				var btns = document.createElement('div');
+				btns.style.marginTop = '12px';
+				btns.style.textAlign = 'right';
+				div.appendChild(btns);
+				
+				var cancelBtn = mxUtils.button(mxResources.get('cancel'), function()
+				{
+					that.hideDialog();
+				});
+				cancelBtn.className = 'geBtn';
+				cancelBtn.style.marginRight = '8px';
+				btns.appendChild(cancelBtn);
+				
+				var genBtn = mxUtils.button(mxResources.get('generate') || 'Generate', function()
+				{
+					var prompt = textarea.value.trim();
+					
+					if (prompt.length === 0)
+					{
+						status.textContent = 'Please enter a prompt.';
+						return;
+					}
+					
+					genBtn.setAttribute('disabled', 'disabled');
+					genBtn.style.opacity = '0.5';
+					status.style.color = '#1f77b4';
+					status.textContent = 'Generating...';
+					
+					fetch('/api/ai/generate', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ prompt: prompt, diagram_id: that.currentDiagramId })
+					}).then(function(resp)
+					{
+						return resp.json().then(function(data)
+						{
+							return { ok: resp.ok, data: data };
+						});
+					}).then(function(result)
+					{
+						status.style.color = '#c62828';
+						
+						if (!result.ok)
+						{
+							status.textContent = result.data.error || 'Generation failed.';
+							genBtn.removeAttribute('disabled');
+							genBtn.style.opacity = '1';
+							return;
+						}
+						
+						var graph = that.editor.graph;
+						var parent = graph.getDefaultParent();
+						var cells = [];
+						var cellMap = {};
+						
+						graph.model.beginUpdate();
+						
+						try
+						{
+							(result.data.nodes || []).forEach(function(n)
+							{
+								var style = SupabaseFile.getDefaultStyle(n.shape || 'process');
+								var cell = graph.insertVertex(parent, n.id, n.label,
+									n.x || 0, n.y || 0, n.w || 120, n.h || 60, style);
+								cellMap[n.id] = cell;
+								cells.push(cell);
+							});
+							
+							(result.data.edges || []).forEach(function(e)
+							{
+								var src = cellMap[e.from];
+								var tgt = cellMap[e.to];
+								
+								if (src != null && tgt != null)
+								{
+									cells.push(graph.insertEdge(parent, null, e.label || '',
+										src, tgt, 'edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;'));
+								}
+							});
+						}
+						finally
+						{
+							graph.model.endUpdate();
+						}
+						
+						graph.setSelectionCells(cells);
+						that.hideDialog();
+					}).catch(function(err)
+					{
+						status.style.color = '#c62828';
+						status.textContent = 'Network error: ' + (err.message || 'unknown');
+						genBtn.removeAttribute('disabled');
+						genBtn.style.opacity = '1';
+					});
+				});
+				genBtn.className = 'geBtn gePrimaryBtn';
+				btns.appendChild(genBtn);
+				
+				that.showDialog(div, 400, 280, true, true, function()
+				{
+					textarea.value = '';
+				});
+				textarea.focus();
+			}));
+			
+			// Append the AI entry to the Extras menu
+			var extrasMenu = this.menus.get('extras');
+			
+			if (extrasMenu != null)
+			{
+				var origFunct = extrasMenu.funct;
+				
+				extrasMenu.funct = function(menu, parent)
+				{
+					origFunct.apply(this, arguments);
+					
+					if (that.currentDiagramId != null)
+					{
+						that.menus.addMenuItems(menu, ['-', 'aiGenerate'], parent);
+					}
+				};
+			}
+			
 			// Opens an existing diagram from the dashboard
 			if (this.currentDiagramId != null && this.currentDiagramId !== '')
 			{
